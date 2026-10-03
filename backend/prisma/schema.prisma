@@ -1,0 +1,643 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  RESTRICTED
+  SUSPENDED
+}
+
+enum PostType {
+  DISCUSSION
+  QUESTION
+  POLL
+  IMAGE
+  LINK
+}
+
+enum PostStatus {
+  PUBLISHED
+  PENDING_REVIEW
+  REMOVED
+  DRAFT
+}
+
+enum ReactionType {
+  AGREE
+  INSIGHTFUL
+  THOUGHT_PROVOKING
+  FUNNY
+  STRONG_POINT
+}
+
+enum NotificationType {
+  REPLY
+  MENTION
+  REACTION
+  POLL_RESULT
+  MESSAGE
+  MODERATION
+  APPEAL
+  SYSTEM
+}
+
+enum ReportReason {
+  HARASSMENT
+  HATE_SPEECH
+  THREAT
+  SPAM
+  SCAM
+  EXPLICIT
+  MISINFORMATION
+  PRIVACY_VIOLATION
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  ACTIONED
+  DISMISSED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ModerationActionType {
+  APPROVE
+  REMOVE
+  WARN
+  RESTRICT
+  SUSPEND
+  DISMISS
+}
+
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum IdentityType {
+  PERSISTENT
+  TEMPORARY
+}
+
+model User {
+  id                 String              @id @default(uuid())
+  email              String              @unique
+  passwordHash       String
+  role               UserRole            @default(USER)
+  status             UserStatus          @default(ACTIVE)
+  reputationScore    Int                 @default(100)
+  contributionBadge  String              @default("🌱 Curious Mind")
+  interests          String[]            @default([])
+  identityPreference IdentityType        @default(PERSISTENT)
+  messagePermission  String              @default("EVERYONE") // EVERYONE, RESTRICTED, NOBODY
+  personalizedFeed   Boolean             @default(true)
+  activityVisibility String              @default("PRIVATE")
+  isGhostMode        Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  // Relationships
+  identities         AnonymousIdentity[]
+  posts              Post[]
+  comments           Comment[]
+  reactions          Reaction[]
+  pollVotes          PollVote[]
+  bookmarks          Bookmark[]
+  sentMessages       Message[]           @relation("SentMessages")
+  receivedMessages   Message[]           @relation("ReceivedMessages")
+  notifications      Notification[]
+  reportsFiled       Report[]            @relation("Reporter")
+  moderationActions  ModerationAction[]
+  appeals            Appeal[]
+  blockedUsers       UserBlock[]         @relation("Blocker")
+  blockedBy          UserBlock[]         @relation("Blocked")
+  mutedUsers         UserMute[]          @relation("Muter")
+  mutedBy            UserMute[]          @relation("Muted")
+  followedTopics     TopicFollow[]
+  sessions           Session[]
+  debateVotes        DebateVote[]
+  ideaVotes          IdeaVote[]
+  thoughtResponses   ThoughtResponse[]
+  mindChangeVotes    MindChangeVote[]
+  argumentQualityVotes ArgumentQualityVote[]
+
+  @@map("users")
+}
+
+model AnonymousIdentity {
+  id              String       @id @default(uuid())
+  displayName     String       // e.g. "Anonymous Fox"
+  avatarSeed      String       // Seed for SVG abstract avatar
+  avatarShape     String       // geometric, celestial, organic, elemental
+  avatarColor     String       // hex or gradient palette name
+  identityType    IdentityType @default(PERSISTENT)
+  discussionId    String?      // Optional discussion scope for disappearing identities
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+
+  // References
+  posts           Post[]
+  comments        Comment[]
+  sentMessages    Message[]    @relation("SenderIdentity")
+  recvMessages    Message[]    @relation("ReceiverIdentity")
+  thoughtReplies  ThoughtResponse[]
+
+  @@index([userId])
+  @@map("anonymous_identities")
+}
+
+model Topic {
+  id          String        @id @default(uuid())
+  slug        String        @unique
+  name        String
+  description String
+  icon        String        // Lucide icon name or emoji
+  color       String        @default("#6366F1")
+  postCount   Int           @default(0)
+  followerCount Int         @default(0)
+  createdAt   DateTime      @default(now())
+
+  posts       Post[]
+  followers   TopicFollow[]
+
+  @@index([slug])
+  @@map("topics")
+}
+
+model TopicFollow {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topicId   String
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, topicId])
+  @@map("user_topic_follows")
+}
+
+model Post {
+  id              String             @id @default(uuid())
+  title           String
+  content         String
+  mediaUrl        String?
+  postType        PostType           @default(DISCUSSION)
+  status          PostStatus         @default(PUBLISHED)
+  isPinned        Boolean            @default(false)
+  allowComments   Boolean            @default(true)
+  score           Int                @default(0)
+  views           Int                @default(0)
+  hashtags        String[]           @default([])
+  
+  // Trending calculation fields
+  trendingScore   Float              @default(0.0)
+  lastActivityAt  DateTime           @default(now())
+
+  // New Feature Fields
+  statementType      String              @default("OPINION") // OPINION, FACT, QUESTION, IDEA, INFORMATION
+  isChallengeOpinion Boolean             @default(false)
+  sourceUrl          String?
+  sourceTitle        String?
+  sourceType         String?             // ARTICLE, RESEARCH_PAPER, WEBSITE, DOCUMENT
+  slowMode           Boolean             @default(false)
+  slowModeSeconds    Int                 @default(30)
+  language           String              @default("en") // en, hi, mr, gu, other
+  isPotentialScam    Boolean             @default(false)
+  scamReason         String?
+
+  // Foreign keys
+  userId          String
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  identityId      String
+  identity        AnonymousIdentity  @relation(fields: [identityId], references: [id], onDelete: Cascade)
+  topicId         String
+  topic           Topic              @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relationships
+  comments        Comment[]
+  reactions       Reaction[]
+  poll            Poll?
+  bookmarks       Bookmark[]
+  reports         Report[]           @relation("PostReports")
+  moderationResult ModerationResult?
+  appeals         Appeal[]
+  mindChangeVotes MindChangeVote[]
+  argumentQualityVotes ArgumentQualityVote[]
+
+  @@index([topicId])
+  @@index([userId])
+  @@index([status])
+  @@index([trendingScore])
+  @@index([createdAt])
+  @@map("posts")
+}
+
+model Comment {
+  id              String            @id @default(uuid())
+  content         String
+  status          PostStatus        @default(PUBLISHED)
+  challengeType   String?           // AGREE, DISAGREE, EVIDENCE, ALTERNATIVE
+  postId          String
+  post            Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  identityId      String
+  identity        AnonymousIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade)
+  parentId        String?
+  parent          Comment?          @relation("ThreadReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies         Comment[]         @relation("ThreadReplies")
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  reactions       Reaction[]
+  reports         Report[]          @relation("CommentReports")
+  moderationResult ModerationResult?
+  argumentQualityVotes ArgumentQualityVote[]
+
+  @@index([postId])
+  @@index([parentId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model Reaction {
+  id           String       @id @default(uuid())
+  reactionType ReactionType
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId       String?
+  post         Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId    String?
+  comment      Comment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+
+  @@unique([userId, postId, reactionType])
+  @@unique([userId, commentId, reactionType])
+  @@map("reactions")
+}
+
+model Poll {
+  id          String       @id @default(uuid())
+  postId      String       @unique
+  post        Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  question    String
+  expiresAt   DateTime?
+  totalVotes  Int          @default(0)
+  createdAt   DateTime     @default(now())
+
+  options     PollOption[]
+  votes       PollVote[]
+
+  @@map("polls")
+}
+
+model PollOption {
+  id        String     @id @default(uuid())
+  pollId    String
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  text      String
+  voteCount Int        @default(0)
+
+  votes     PollVote[]
+
+  @@map("poll_options")
+}
+
+model PollVote {
+  id           String     @id @default(uuid())
+  pollId       String
+  poll         Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  pollOptionId String
+  pollOption   PollOption @relation(fields: [pollOptionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([userId, pollId])
+  @@map("poll_votes")
+}
+
+model Bookmark {
+  id             String   @id @default(uuid())
+  collectionName String   @default("Default")
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId         String
+  post           Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([userId, collectionName])
+  @@map("bookmarks")
+}
+
+model Message {
+  id                 String            @id @default(uuid())
+  conversationId     String
+  senderUserId       String
+  senderUser         User              @relation("SentMessages", fields: [senderUserId], references: [id], onDelete: Cascade)
+  senderIdentityId   String
+  senderIdentity     AnonymousIdentity @relation("SenderIdentity", fields: [senderIdentityId], references: [id], onDelete: Cascade)
+  receiverUserId     String
+  receiverUser       User              @relation("ReceivedMessages", fields: [receiverUserId], references: [id], onDelete: Cascade)
+  receiverIdentityId String
+  receiverIdentity   AnonymousIdentity @relation("ReceiverIdentity", fields: [receiverIdentityId], references: [id], onDelete: Cascade)
+  content            String
+  isRead             Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+
+  reports            Report[]          @relation("MessageReports")
+
+  @@index([conversationId])
+  @@index([senderUserId])
+  @@index([receiverUserId])
+  @@map("messages")
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  title       String
+  content     String
+  link        String?
+  referenceId String?
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Report {
+  id             String       @id @default(uuid())
+  reporterUserId String
+  reporter       User         @relation("Reporter", fields: [reporterUserId], references: [id], onDelete: Cascade)
+  reason         ReportReason
+  explanation    String?
+  status         ReportStatus @default(PENDING)
+  targetType     String       // POST, COMMENT, MESSAGE, USER
+  
+  postId         String?
+  post           Post?        @relation("PostReports", fields: [postId], references: [id], onDelete: Cascade)
+  commentId      String?
+  comment        Comment?     @relation("CommentReports", fields: [commentId], references: [id], onDelete: Cascade)
+  messageId      String?
+  message        Message?     @relation("MessageReports", fields: [messageId], references: [id], onDelete: Cascade)
+
+  actions        ModerationAction[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([status])
+  @@map("reports")
+}
+
+model ModerationResult {
+  id                String    @id @default(uuid())
+  targetType        String    // POST, COMMENT
+  postId            String?   @unique
+  post              Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId         String?   @unique
+  comment           Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  toxicityScore     Float     @default(0.0)
+  harassmentScore   Float     @default(0.0)
+  spamScore         Float     @default(0.0)
+  threatScore       Float     @default(0.0)
+  riskLevel         RiskLevel @default(LOW)
+  recommendedAction String    @default("publish")
+  flaggedKeywords   String[]  @default([])
+  analyzedAt        DateTime  @default(now())
+
+  @@map("moderation_results")
+}
+
+model ModerationAction {
+  id              String               @id @default(uuid())
+  reportId        String?
+  report          Report?              @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  moderatorUserId String
+  moderator       User                 @relation(fields: [moderatorUserId], references: [id], onDelete: Cascade)
+  actionType      ModerationActionType
+  notes           String?
+  createdAt       DateTime             @default(now())
+
+  @@map("moderation_actions")
+}
+
+model Appeal {
+  id          String       @id @default(uuid())
+  postId      String?
+  post        Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason      String
+  status      AppealStatus @default(PENDING)
+  reviewNotes String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("appeals")
+}
+
+model UserBlock {
+  id        String   @id @default(uuid())
+  blockerId String
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@map("user_blocks")
+}
+
+model UserMute {
+  id        String   @id @default(uuid())
+  muterId   String
+  muter     User     @relation("Muter", fields: [muterId], references: [id], onDelete: Cascade)
+  mutedId   String
+  muted     User     @relation("Muted", fields: [mutedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([muterId, mutedId])
+  @@map("user_mutes")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("sessions")
+}
+
+// === UNIQUE FEATURE MODELS ===
+
+model ThoughtOfDay {
+  id         String            @id @default(uuid())
+  prompt     String
+  category   String            @default("General")
+  activeDate DateTime          @default(now())
+  isActive   Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+
+  responses  ThoughtResponse[]
+
+  @@map("thought_of_day")
+}
+
+model ThoughtResponse {
+  id         String            @id @default(uuid())
+  thoughtId  String
+  thought    ThoughtOfDay      @relation(fields: [thoughtId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  identityId String
+  identity   AnonymousIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade)
+  content    String
+  upvotes    Int               @default(0)
+  createdAt  DateTime          @default(now())
+
+  @@map("thought_responses")
+}
+
+model BlindDebate {
+  id               String       @id @default(uuid())
+  topic            String
+  category         String       @default("Ethics & Tech")
+  sideATitle       String
+  sideAContent     String
+  sideBTitle       String
+  sideBContent     String
+  sideAAuthorAlias String       @default("🅰️ Anonymous Raven")
+  sideBAuthorAlias String       @default("🅱️ Anonymous Fox")
+  votesA           Int          @default(0)
+  votesB           Int          @default(0)
+  status           String       @default("ACTIVE") // ACTIVE, CONCLUDED
+  createdAt        DateTime     @default(now())
+
+  votes            DebateVote[]
+  mindChangeVotes  MindChangeVote[]
+
+  @@map("blind_debates")
+}
+
+model DebateVote {
+  id        String      @id @default(uuid())
+  debateId  String
+  debate    BlindDebate @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  side      String      // "A" or "B"
+  createdAt DateTime    @default(now())
+
+  @@unique([debateId, userId])
+  @@map("debate_votes")
+}
+
+model IdeaVsIdea {
+  id           String     @id @default(uuid())
+  title        String
+  description  String?
+  optionATitle String
+  optionADesc  String
+  optionBTitle String
+  optionBDesc  String
+  votesA       Int        @default(0)
+  votesB       Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  votes        IdeaVote[]
+
+  @@map("idea_vs_ideas")
+}
+
+model IdeaVote {
+  id         String     @id @default(uuid())
+  ideaId     String
+  idea       IdeaVsIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option     String     // "A" or "B"
+  createdAt  DateTime   @default(now())
+
+  @@unique([ideaId, userId])
+  @@map("idea_votes")
+}
+
+model MindChangeVote {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId         String?
+  post           Post?         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  debateId       String?
+  debate         BlindDebate?  @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  opinionChange  String        // YES, A_LITTLE, NO, STILL_THINKING
+  createdAt      DateTime      @default(now())
+
+  @@unique([userId, postId])
+  @@unique([userId, debateId])
+  @@map("mind_change_votes")
+}
+
+model ArgumentQualityVote {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId     String?
+  post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId  String?
+  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  qualityTag String   // WELL_EXPLAINED, EVIDENCE_PROVIDED, RESPECTFUL, USEFUL_PERSPECTIVE
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, postId, qualityTag])
+  @@unique([userId, commentId, qualityTag])
+  @@map("argument_quality_votes")
+}
+
+model EmailOtp {
+  id        String   @id @default(uuid())
+  email     String
+  code      String
+  purpose   String   @default("LOGIN") // LOGIN or REGISTER
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@map("email_otps")
+}

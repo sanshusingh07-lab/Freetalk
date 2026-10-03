@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #F7F5F0;
+    --bg-secondary: #EFECE4;
+    --surface: #FFFFFF;
+    --surface-card: #FFFFFF;
+    --border: #E2DED5;
+    --text-primary: #000000;
+    --text-secondary: #000000;
+    --text-muted: #000000;
+    --accent: #C45A3C;
+    --accent-hover: #B34F33;
+    --accent-olive: #68735B;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: #000000;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6, p, label, .font-editorial {
+    letter-spacing: -0.015em;
+    color: #000000;
+  }
+}
+
+/* Editorial Card & Panel Systems */
+.glass-panel {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.glass-card {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.glass-card:hover {
+  border-color: #C45A3C40;
+}
+
+.dark .glass-card:hover {
+  border-color: #D06A4A50;
+}
+
+/* Minimalist Editorial Helpers */
+.editorial-headline {
+  font-family: 'Newsreader', Georgia, serif;
+}
+
+.editorial-divider {
+  border-color: var(--border);
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(107, 107, 103, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 107, 103, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
