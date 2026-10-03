@@ -42,6 +42,59 @@ const EMAIL_FROM = process.env.EMAIL_FROM || '"FreeTalk Security" <notifications
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 /**
+ * Dispatches an email via HTTPS REST API (Port 443).
+ * This works on ALL cloud hosting platforms including Render Free Tier,
+ * which blocks outgoing SMTP ports (25, 465, 587).
+ */
+async function sendViaHttpApi({ to, subject, html, text }) {
+  // 1. Resend API (https://resend.com - 3000 free emails/month)
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: process.env.RESEND_FROM || 'FreeTalk <onboarding@resend.dev>',
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        html,
+        text
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Resend API error');
+    return { success: true, messageId: data.id, provider: 'Resend' };
+  }
+
+  // 2. Brevo API (https://brevo.com - 300 free emails/day)
+  const brevoKey = process.env.BREVO_API_KEY;
+  if (brevoKey) {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': brevoKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: { name: 'FreeTalk', email: process.env.SMTP_USER || 'officialfreetalk@gmail.com' },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+        textContent: text
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Brevo API error');
+    return { success: true, messageId: data.messageId, provider: 'Brevo' };
+  }
+
+  return null;
+}
+
+/**
  * Common HTML email layout with FreeTalk's warm editorial aesthetic.
  */
 function buildEditorialEmailHtml({ title, preheader, headline, contentHtml, ctaText, ctaLink }) {
@@ -444,6 +497,24 @@ export async function sendOtpEmail({ to, code, purpose = 'LOGIN' }) {
       ctaLink: null
     });
 
+    // 1. Try sending via HTTPS API first (Bypasses Render Free Tier SMTP block)
+    const httpResult = await sendViaHttpApi({ to, subject, html, text });
+    if (httpResult) {
+      console.log(`[EmailService] 🚀 Sent via ${httpResult.provider} HTTPS API (Port 443) -> TO: ${to} | Code: ${code}`);
+      const logEntry = {
+        type: 'OTP',
+        to,
+        subject,
+        code,
+        purpose,
+        timestamp: new Date().toISOString(),
+        messageId: httpResult.messageId
+      };
+      dispatchedEmailsLog.unshift(logEntry);
+      return { success: true, info: httpResult, code };
+    }
+
+    // 2. Otherwise fall back to SMTP
     const sendPromise = transporter.sendMail({
       from: EMAIL_FROM,
       to,
