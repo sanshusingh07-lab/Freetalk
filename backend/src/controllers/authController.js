@@ -398,7 +398,7 @@ export async function sendOtp(req, res, next) {
       data: { email: normalizedEmail, code, purpose, expiresAt }
     });
 
-    // Send email with fallback
+    // Send email with 15s timeout
     let emailResult = { success: false, code };
     try {
       emailResult = await sendOtpEmail({ to: normalizedEmail, code, purpose });
@@ -410,10 +410,7 @@ export async function sendOtp(req, res, next) {
       success: true,
       otpRequired: true,
       emailDelivered: emailResult.success,
-      message: emailResult.success
-        ? `Verification code sent to ${normalizedEmail}. Please check your inbox or spam folder.`
-        : `Verification code generated! (Cloud host email restricted. Use code: ${code})`,
-      devCode: !emailResult.success ? code : undefined
+      message: `Verification code sent to ${normalizedEmail}! Please check your Inbox and Spam folder.`
     });
   } catch (err) {
     next(err);

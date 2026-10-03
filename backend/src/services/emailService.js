@@ -20,28 +20,15 @@ function createTransporter() {
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
   if (user && pass) {
-    if (host === 'smtp.gmail.com' || user.endsWith('@gmail.com')) {
-      return nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user, pass },
-        connectionTimeout: 4000,
-        greetingTimeout: 4000,
-        socketTimeout: 5000
-      });
-    }
-
-    if (host) {
-      return nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass },
-        connectionTimeout: 4000,
-        greetingTimeout: 4000,
-        socketTimeout: 5000,
-        tls: { rejectUnauthorized: false }
-      });
-    }
+    return nodemailer.createTransport({
+      host: host || 'smtp.gmail.com',
+      port,
+      secure,
+      auth: { user, pass },
+      connectionTimeout: 15000,
+      greetingTimeout: 12000,
+      socketTimeout: 15000
+    });
   }
 
   // Development / fallback transporter that captures message structure cleanly
@@ -466,7 +453,7 @@ export async function sendOtpEmail({ to, code, purpose = 'LOGIN' }) {
     });
 
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('SMTP timeout: outgoing email connection restricted by cloud host.')), 4500)
+      setTimeout(() => reject(new Error('SMTP timeout: network took longer than 15 seconds.')), 15000)
     );
 
     const info = await Promise.race([sendPromise, timeoutPromise]);

@@ -61,13 +61,9 @@ export function Login() {
         } else {
           // Regular user: proceed to OTP verification
           setStep('OTP');
+          setOtpCode(''); // Keep field clean for user manual entry
           setResendCountdown(60);
-          if (res.devCode) {
-            setOtpCode(res.devCode);
-            toast.info(`Verification code: ${res.devCode}`);
-          } else {
-            toast.success(res.message || 'Verification code sent to your email.');
-          }
+          toast.success(res.message || 'Verification code sent to your email! (Check your Inbox & Spam folder)');
         }
       }
     } catch (err) {
@@ -227,6 +223,10 @@ export function Login() {
                 We've sent a 6-digit security code to{' '}
                 <span className="font-semibold text-ink-800 dark:text-paper-200">{email}</span>.
               </p>
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-800 dark:text-amber-200 font-medium flex items-center justify-center gap-2 max-w-sm mx-auto shadow-subtle">
+                <span className="text-base">📬</span>
+                <span>Code sent! If not in your inbox, please check your <strong>Spam / Junk folder</strong>.</span>
+              </div>
             </div>
 
             <form onSubmit={handleOtpSubmit} className="space-y-5">

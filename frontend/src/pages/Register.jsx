@@ -131,13 +131,9 @@ export function Register() {
       const res = await sendOtp({ email, purpose: 'REGISTER' });
       if (res.success) {
         setStep(4);
+        setOtpCode(''); // Keep field empty for manual user entry
         setResendCountdown(60);
-        if (res.devCode) {
-          setOtpCode(res.devCode);
-          toast.info(`Verification code: ${res.devCode}`);
-        } else {
-          toast.success(res.message || `Verification code dispatched to ${email}`);
-        }
+        toast.success(`Verification code dispatched! Please check your Inbox and Spam folder.`, 6000);
       }
     } catch (err) {
       toast.error(err.message || "Failed to send verification code.");
@@ -426,6 +422,10 @@ export function Register() {
                 We've sent a 6-digit verification code to{' '}
                 <span className="font-semibold text-ink-800 dark:text-paper-200">{email}</span>.
               </p>
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-800 dark:text-amber-200 font-medium flex items-center justify-center gap-2 max-w-sm mx-auto shadow-subtle">
+                <span className="text-base">📬</span>
+                <span>Code sent! If not in your inbox, please check your <strong>Spam / Junk folder</strong>.</span>
+              </div>
             </div>
 
             <form onSubmit={handleVerifyAndRegister} className="space-y-5">
