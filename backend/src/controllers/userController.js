@@ -37,6 +37,8 @@ export async function getMyActivity(req, res, next) {
       createdAt: p.createdAt,
       commentsCount: p._count.comments,
       reactionsCount: p._count.reactions,
+      isAuthor: true,
+      canDelete: true,
       topic: p.topic,
       identity: serializePublicIdentity(p.identity)
     }));

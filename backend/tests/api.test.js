@@ -166,6 +166,38 @@ describe('FreeTalk Backend API Tests', () => {
     expect(getRes.body.post.slowMode).toBe(false);
   });
 
+  it('DELETE /api/posts/:id allows author to delete their discussion', async () => {
+    const topicsRes = await request(app).get('/api/topics');
+    const topicId = topicsRes.body.topics[0].id;
+
+    // 1. Create a post
+    const createRes = await request(app)
+      .post('/api/posts')
+      .set('Cookie', authCookie)
+      .send({
+        title: 'Temporary post created to verify post deletion option',
+        content: 'This discussion is intended to test that authors can delete their own discussions smoothly.',
+        topicId: topicId
+      });
+
+    expect(createRes.status).toBe(201);
+    const postId = createRes.body.post.id;
+    expect(createRes.body.post.canDelete).toBe(true);
+
+    // 2. Delete the post
+    const deleteRes = await request(app)
+      .delete(`/api/posts/${postId}`)
+      .set('Cookie', authCookie);
+
+    expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body.success).toBe(true);
+    expect(deleteRes.body.message).toContain('removed');
+
+    // 3. Verify post is no longer accessible
+    const getRes = await request(app).get(`/api/posts/${postId}`);
+    expect(getRes.status).toBe(404);
+  });
+
   it('GET /api/features/thought-of-day returns active prompt', async () => {
     const res = await request(app).get('/api/features/thought-of-day');
     expect(res.status).toBe(200);

@@ -175,6 +175,8 @@ export async function getPosts(req, res, next) {
         reactionCounts,
         userReactions,
         isBookmarked,
+        isAuthor: req.user ? req.user.id === post.userId : false,
+        canDelete: Boolean(req.user && (req.user.id === post.userId || ['ADMIN', 'MODERATOR'].includes(req.user.role))),
         identity: serializePublicIdentity(post.identity),
         topic: post.topic,
 
@@ -345,6 +347,7 @@ export async function getPostById(req, res, next) {
         userReactions,
         isBookmarked,
         isAuthor: req.user ? req.user.id === post.userId : false,
+        canDelete: Boolean(req.user && (req.user.id === post.userId || ['ADMIN', 'MODERATOR'].includes(req.user.role))),
         identity: serializePublicIdentity(post.identity),
         topic: post.topic,
 
@@ -536,6 +539,8 @@ export async function createPost(req, res, next) {
         postType: post.postType,
         hashtags: post.hashtags,
         createdAt: post.createdAt,
+        isAuthor: true,
+        canDelete: true,
         identity: serializePublicIdentity(post.identity),
         topic: post.topic
       }
@@ -561,7 +566,13 @@ export async function deletePost(req, res, next) {
       return res.status(403).json({ success: false, message: "Permission denied." });
     }
 
-    await prisma.post.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.post.delete({ where: { id } });
+      await tx.topic.update({
+        where: { id: post.topicId },
+        data: { postCount: { decrement: 1 } }
+      }).catch(() => {});
+    });
 
     return res.status(200).json({
       success: true,

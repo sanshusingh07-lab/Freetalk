@@ -223,7 +223,7 @@ export function PostDetails() {
       </div>
 
       {/* Main Post Card */}
-      <PostCard post={post} onUpdate={loadPostAndComments} />
+      <PostCard post={post} onUpdate={loadPostAndComments} onDelete={() => navigate('/home')} />
 
       {/* Argument Quality Endorsements for Post (Feature 13) */}
       <div className="px-5 py-3 rounded-xl bg-surface border border-border shadow-sm">

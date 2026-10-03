@@ -22,7 +22,8 @@ import {
   Turtle,
   Globe,
   Brain,
-  Send
+  Send,
+  Trash2
 } from 'lucide-react';
 
 const REACTION_CONFIG = [
@@ -33,8 +34,8 @@ const REACTION_CONFIG = [
   { type: 'STRONG_POINT', icon: Flame, label: 'Strong Point', activeColor: 'text-orange-700 bg-orange-50 border-orange-200 dark:text-orange-300 dark:bg-orange-950/40 dark:border-orange-800/60' }
 ];
 
-export function PostCard({ post, onUpdate }) {
-  const { isAuthenticated, activeIdentity } = useAuth();
+export function PostCard({ post, onUpdate, onDelete }) {
+  const { isAuthenticated, activeIdentity, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -43,6 +44,10 @@ export function PostCard({ post, onUpdate }) {
   const [isBookmarked, setIsBookmarked] = useState(post.isBookmarked || false);
   const [bookmarksCount, setBookmarksCount] = useState(post.bookmarksCount || 0);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const canDelete = Boolean(post.canDelete || post.isAuthor || (user && post.userId === user.id));
 
   const handleStartChat = () => {
     if (!isAuthenticated) {
@@ -100,6 +105,26 @@ export function PostCard({ post, onUpdate }) {
     const url = `${window.location.origin}/post/${post.id}`;
     navigator.clipboard.writeText(url);
     toast.success("Discussion link copied to clipboard!");
+  };
+
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      const res = await postService.deletePost(post.id);
+      if (res.data.success) {
+        toast.success(res.data.message || "Discussion removed successfully.");
+        setShowDeleteConfirm(false);
+        if (onDelete) {
+          onDelete(post.id);
+        } else if (onUpdate) {
+          onUpdate(post.id);
+        }
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || "Failed to delete discussion.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -345,8 +370,56 @@ export function PostCard({ post, onUpdate }) {
           >
             <ShieldAlert className="w-3.5 h-3.5" />
           </button>
+
+          {canDelete && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="p-2 rounded-lg text-xs text-ink-400 dark:text-paper-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+              title="Delete discussion"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-surface border border-border rounded-xl max-w-sm w-full p-6 shadow-xl space-y-4 text-left">
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+              <div className="p-2.5 rounded-full bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60">
+                <Trash2 className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-ink-900 dark:text-ink-100">Delete Discussion</h3>
+                <p className="text-xs text-ink-500">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-xs text-ink-600 dark:text-ink-300 leading-relaxed">
+              Are you sure you want to permanently delete this discussion? All comments and reactions on it will also be removed.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-border bg-surface text-ink-700 dark:text-ink-300 hover:border-ink-400 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDelete}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition-colors flex items-center gap-1.5"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Report Modal */}
       <ReportModal
