@@ -154,16 +154,17 @@ export function CreatePost() {
         payload.append('topicId', topicId);
         payload.append('postType', postType);
         payload.append('statementType', statementType);
-        payload.append('isChallengeOpinion', isChallengeOpinion);
+        payload.append('isChallengeOpinion', String(Boolean(isChallengeOpinion)));
         if (sourceUrl.trim()) {
           payload.append('sourceUrl', sourceUrl.trim());
           payload.append('sourceTitle', sourceTitle.trim() || '');
           payload.append('sourceType', sourceType);
         }
-        payload.append('slowMode', slowMode);
+        payload.append('slowMode', String(Boolean(slowMode)));
         payload.append('language', language);
-        payload.append('allowComments', allowComments);
-        payload.append('useTemporaryIdentity', useTemporaryIdentity);
+        payload.append('allowComments', String(Boolean(allowComments)));
+        payload.append('useTemporaryIdentity', String(Boolean(useTemporaryIdentity)));
+        payload.append('hashtags', JSON.stringify(hashtags));
         hashtags.forEach(h => payload.append('hashtags[]', h));
         payload.append('media', mediaFile);
       } else {
@@ -173,15 +174,15 @@ export function CreatePost() {
           topicId,
           postType,
           statementType,
-          isChallengeOpinion,
+          isChallengeOpinion: Boolean(isChallengeOpinion),
           sourceUrl: sourceUrl.trim() || null,
           sourceTitle: sourceTitle.trim() || null,
           sourceType: sourceUrl.trim() ? sourceType : null,
-          slowMode,
+          slowMode: Boolean(slowMode),
           language,
           hashtags,
-          allowComments,
-          useTemporaryIdentity
+          allowComments: Boolean(allowComments),
+          useTemporaryIdentity: Boolean(useTemporaryIdentity)
         };
       }
 

@@ -59,11 +59,38 @@ export const changePasswordSchema = z.object({
   newPassword: z.string().min(8, { message: "New password must be at least 8 characters long" }).max(128)
 });
 
+export const booleanSchema = z.preprocess((val) => {
+  if (typeof val === 'string') {
+    const s = val.trim().toLowerCase();
+    if (s === 'true' || s === '1') return true;
+    if (s === 'false' || s === '0') return false;
+    if (s === '') return undefined;
+  }
+  return val;
+}, z.boolean());
+
+export const hashtagsSchema = z.preprocess((val) => {
+  if (typeof val === 'string') {
+    const s = val.trim();
+    if (!s) return [];
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return s.split(/[\s,]+/).map(t => t.replace(/^#/, '').trim()).filter(Boolean);
+    }
+  }
+  if (val && !Array.isArray(val)) {
+    return [val];
+  }
+  return val;
+}, z.array(z.string().max(30).regex(/^[a-zA-Z0-9_-]+$/, { message: "Invalid hashtag format" })).max(10).optional().default([]));
+
 export const userSettingsSchema = z.object({
   interests: z.array(z.string().max(50)).max(15).optional(),
   identityPreference: z.enum(['PERSISTENT', 'TEMPORARY']).optional(),
   messagePermission: z.enum(['EVERYONE', 'RESTRICTED', 'NOBODY']).optional(),
-  personalizedFeed: z.boolean().optional(),
+  personalizedFeed: booleanSchema.optional(),
   activityVisibility: z.enum(['PUBLIC_ANON', 'PRIVATE']).optional()
 });
 
@@ -73,15 +100,15 @@ export const postSchema = z.object({
   content: z.string().min(10, { message: "Content must be at least 10 characters" }).max(20000),
   topicId: uuidSchema,
   postType: z.enum(['DISCUSSION', 'QUESTION', 'POLL', 'IMAGE', 'LINK']).default('DISCUSSION'),
-  hashtags: z.array(z.string().max(30).regex(/^[a-zA-Z0-9_-]+$/, { message: "Invalid hashtag format" })).max(10).optional().default([]),
-  allowComments: z.boolean().optional().default(true),
-  useTemporaryIdentity: z.boolean().optional().default(false),
+  hashtags: hashtagsSchema,
+  allowComments: booleanSchema.optional().default(true),
+  useTemporaryIdentity: booleanSchema.optional().default(false),
   statementType: z.enum(['OPINION', 'FACT', 'QUESTION', 'IDEA', 'INFORMATION']).optional().default('OPINION'),
-  isChallengeOpinion: z.boolean().optional().default(false),
+  isChallengeOpinion: booleanSchema.optional().default(false),
   sourceUrl: z.string().max(500).optional().nullable(),
   sourceTitle: z.string().max(200).optional().nullable(),
   sourceType: z.string().max(50).optional().nullable(),
-  slowMode: z.boolean().optional().default(false),
+  slowMode: booleanSchema.optional().default(false),
   slowModeSeconds: z.coerce.number().min(5).max(300).optional().default(30),
   language: z.string().max(10).optional().default('en'),
   mediaUrl: z.string().max(500).optional().nullable()

@@ -7,6 +7,33 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('[Seed] Starting database seed...');
 
+  const userCount = await prisma.user.count();
+  const forceReset = process.env.FORCE_RESET === 'true';
+
+  if (userCount > 0 && !forceReset) {
+    console.log(`[Seed] Safe mode: ${userCount} existing users found. Preserving all user data and posts.`);
+    console.log('[Seed] Ensuring default topics exist via non-destructive upsert...');
+    for (const t of DEFAULT_TOPICS) {
+      await prisma.topic.upsert({
+        where: { slug: t.slug },
+        update: {},
+        create: {
+          slug: t.slug,
+          name: t.name,
+          description: t.description,
+          icon: t.icon,
+          color: t.color,
+          postCount: 0,
+          followerCount: 15
+        }
+      });
+    }
+    console.log('[Seed] Done. All user accounts, posts, and data are 100% preserved.');
+    return;
+  }
+
+  // Only if brand new database or explicit FORCE_RESET=true:
+  console.log('[Seed] Initializing clean database setup...');
   // Clean existing tables in reverse dependency order
   await prisma.argumentQualityVote.deleteMany();
   await prisma.mindChangeVote.deleteMany();
@@ -65,8 +92,9 @@ async function main() {
     'admin@freetalk.com'
   ];
 
+  let adminUser = null;
   for (const email of adminEmails) {
-    const adminUser = await prisma.user.create({
+    const createdAdmin = await prisma.user.create({
       data: {
         email,
         passwordHash: defaultPasswordHash,
@@ -76,6 +104,7 @@ async function main() {
         interests: ['technology', 'cybersecurity', 'ai']
       }
     });
+    if (!adminUser) adminUser = createdAdmin;
 
     await prisma.anonymousIdentity.create({
       data: {
@@ -83,7 +112,7 @@ async function main() {
         avatarShape: 'celestial',
         avatarColor: '#8B5CF6',
         avatarSeed: `admin-${email}-seed`,
-        userId: adminUser.id
+        userId: createdAdmin.id
       }
     });
   }

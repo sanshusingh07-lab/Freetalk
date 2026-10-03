@@ -19,7 +19,7 @@ function createTransporter() {
   const pass = rawPass.replace(/\s+/g, '');
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
-  if (user && pass) {
+  if (process.env.NODE_ENV !== 'test' && user && pass) {
     return nodemailer.createTransport({
       host: host || 'smtp.gmail.com',
       port,

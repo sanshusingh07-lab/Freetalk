@@ -389,6 +389,11 @@ export async function getPostById(req, res, next) {
 
 export async function createPost(req, res, next) {
   try {
+    if (req.body && req.body['hashtags[]'] && !req.body.hashtags) {
+      req.body.hashtags = Array.isArray(req.body['hashtags[]'])
+        ? req.body['hashtags[]']
+        : [req.body['hashtags[]']];
+    }
     const validated = postSchema.parse(req.body);
     const userId = req.user.id;
 

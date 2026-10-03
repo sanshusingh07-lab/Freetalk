@@ -138,6 +138,34 @@ describe('FreeTalk Backend API Tests', () => {
     expect(res.body.post.identity.displayName).toBe('Anonymous Fox');
   });
 
+  it('POST /api/posts handles string booleans and FormData style fields properly', async () => {
+    const topicsRes = await request(app).get('/api/topics');
+    const topicId = topicsRes.body.topics[0].id;
+
+    const res = await request(app)
+      .post('/api/posts')
+      .set('Cookie', authCookie)
+      .send({
+        title: 'Verifying FormData string boolean coercion works cleanly',
+        content: 'This discussion verifies that string booleans from multipart or form data are coerced seamlessly without validation error.',
+        topicId: topicId,
+        allowComments: 'true',
+        slowMode: 'false',
+        isChallengeOpinion: 'false',
+        useTemporaryIdentity: 'false',
+        hashtags: 'coercion, formdata, testing'
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.post.id).toBeDefined();
+
+    const getRes = await request(app).get(`/api/posts/${res.body.post.id}`);
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.post.allowComments).toBe(true);
+    expect(getRes.body.post.slowMode).toBe(false);
+  });
+
   it('GET /api/features/thought-of-day returns active prompt', async () => {
     const res = await request(app).get('/api/features/thought-of-day');
     expect(res.status).toBe(200);
