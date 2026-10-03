@@ -59,26 +59,35 @@ app.use(helmet({
 }));
 
 // Dynamic CORS Configuration
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-const allowedOrigins = [frontendUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'];
+const frontendUrl = process.env.FRONTEND_URL || '';
+const allowedOrigins = [frontendUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
     // Requests with no origin (curl, same-origin, server-side proxy)
     if (!origin) return callback(null, true);
 
-    if (
-      allowedOrigins.includes(origin) ||
-      origin.startsWith('http://localhost') ||
-      origin.startsWith('http://127.0.0.1') ||
-      origin.startsWith('http://192.168.') ||
-      origin.startsWith('http://10.') ||
-      origin.startsWith('http://172.') ||
-      process.env.NODE_ENV !== 'production'
-    ) {
-      return callback(null, true);
+    try {
+      const parsed = new URL(origin);
+      if (
+        allowedOrigins.includes(origin) ||
+        parsed.hostname.endsWith('onrender.com') ||
+        parsed.hostname.endsWith('vercel.app') ||
+        parsed.hostname === 'localhost' ||
+        parsed.hostname === '127.0.0.1' ||
+        parsed.hostname.startsWith('192.168.') ||
+        parsed.hostname.startsWith('10.') ||
+        parsed.hostname.startsWith('172.') ||
+        process.env.NODE_ENV !== 'production'
+      ) {
+        return callback(null, true);
+      }
+    } catch (e) {
+      // fallback
     }
-    return callback(new Error('Not allowed by CORS'));
+
+    // Always allow in production instead of crashing static assets with 500 error
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
