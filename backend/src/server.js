@@ -54,6 +54,7 @@ app.use((req, res, next) => {
 
 // Security Headers
 app.use(helmet({
+  contentSecurityPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
