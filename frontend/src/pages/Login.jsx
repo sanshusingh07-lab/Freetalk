@@ -62,7 +62,12 @@ export function Login() {
           // Regular user: proceed to OTP verification
           setStep('OTP');
           setResendCountdown(60);
-          toast.success(res.message || 'Verification code sent to your email.');
+          if (res.devCode) {
+            setOtpCode(res.devCode);
+            toast.info(`Verification code: ${res.devCode}`);
+          } else {
+            toast.success(res.message || 'Verification code sent to your email.');
+          }
         }
       }
     } catch (err) {

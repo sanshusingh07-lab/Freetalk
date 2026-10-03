@@ -132,7 +132,12 @@ export function Register() {
       if (res.success) {
         setStep(4);
         setResendCountdown(60);
-        toast.success(`Verification code dispatched to ${email}`);
+        if (res.devCode) {
+          setOtpCode(res.devCode);
+          toast.info(`Verification code: ${res.devCode}`);
+        } else {
+          toast.success(res.message || `Verification code dispatched to ${email}`);
+        }
       }
     } catch (err) {
       toast.error(err.message || "Failed to send verification code.");

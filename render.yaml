@@ -3,7 +3,7 @@ services:
     name: freetalk
     runtime: node
     plan: free
-    buildCommand: npm run build && cd backend && npx prisma db push
+    buildCommand: npm run build && cd backend && npx prisma db push && npm run db:seed
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:

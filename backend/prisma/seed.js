@@ -58,27 +58,35 @@ async function main() {
   const seedPassword = process.env.SEED_ADMIN_PASSWORD || 'Password123!';
   const defaultPasswordHash = await argon2.hash(seedPassword);
 
-  // 3. Create Admin User & Identity
-  const adminUser = await prisma.user.create({
-    data: {
-      email: 'sanshusinghadmin@gmail.internal',
-      passwordHash: defaultPasswordHash,
-      role: 'ADMIN',
-      reputationScore: 500,
-      contributionBadge: '🌟 System Guardian',
-      interests: ['technology', 'cybersecurity', 'ai']
-    }
-  });
+  // 3. Create Admin Users & Identities
+  const adminEmails = [
+    'sanshusinghadmin@gmail.internal',
+    'officialfreetalk@gmail.com',
+    'admin@freetalk.com'
+  ];
 
-  const adminIdentity = await prisma.anonymousIdentity.create({
-    data: {
-      displayName: 'Anonymous Oracle',
-      avatarShape: 'celestial',
-      avatarColor: '#8B5CF6',
-      avatarSeed: 'admin-oracle-seed',
-      userId: adminUser.id
-    }
-  });
+  for (const email of adminEmails) {
+    const adminUser = await prisma.user.create({
+      data: {
+        email,
+        passwordHash: defaultPasswordHash,
+        role: 'ADMIN',
+        reputationScore: 500,
+        contributionBadge: '🌟 System Guardian',
+        interests: ['technology', 'cybersecurity', 'ai']
+      }
+    });
+
+    await prisma.anonymousIdentity.create({
+      data: {
+        displayName: email.includes('sanshu') ? 'Anonymous Oracle' : 'Master Overseer',
+        avatarShape: 'celestial',
+        avatarColor: '#8B5CF6',
+        avatarSeed: `admin-${email}-seed`,
+        userId: adminUser.id
+      }
+    });
+  }
 
   // 4. Create Moderator User & Identity
   const modUser = await prisma.user.create({

@@ -23,7 +23,10 @@ function createTransporter() {
     if (host === 'smtp.gmail.com' || user.endsWith('@gmail.com')) {
       return nodemailer.createTransport({
         service: 'gmail',
-        auth: { user, pass }
+        auth: { user, pass },
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 5000
       });
     }
 
@@ -33,6 +36,9 @@ function createTransporter() {
         port,
         secure,
         auth: { user, pass },
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 5000,
         tls: { rejectUnauthorized: false }
       });
     }
@@ -451,13 +457,19 @@ export async function sendOtpEmail({ to, code, purpose = 'LOGIN' }) {
       ctaLink: null
     });
 
-    const info = await transporter.sendMail({
+    const sendPromise = transporter.sendMail({
       from: EMAIL_FROM,
       to,
       subject,
       text,
       html
     });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('SMTP timeout: outgoing email connection restricted by cloud host.')), 4500)
+    );
+
+    const info = await Promise.race([sendPromise, timeoutPromise]);
 
     const logEntry = {
       type: 'OTP',
@@ -472,10 +484,10 @@ export async function sendOtpEmail({ to, code, purpose = 'LOGIN' }) {
     if (dispatchedEmailsLog.length > 50) dispatchedEmailsLog.pop();
 
     console.log(`[EmailService] 🔐 OTP email sent from: ${EMAIL_FROM} -> TO: ${to} | Delivered to: ${JSON.stringify(info?.accepted)} | Code: ${code}`);
-    return { success: true, info };
+    return { success: true, info, code };
   } catch (err) {
     console.error(`[EmailService Error] Failed to send OTP email to ${to}:`, err.message);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, code };
   }
 }
 

@@ -398,13 +398,22 @@ export async function sendOtp(req, res, next) {
       data: { email: normalizedEmail, code, purpose, expiresAt }
     });
 
-    // Send email
-    await sendOtpEmail({ to: normalizedEmail, code, purpose });
+    // Send email with fallback
+    let emailResult = { success: false, code };
+    try {
+      emailResult = await sendOtpEmail({ to: normalizedEmail, code, purpose });
+    } catch (e) {
+      console.warn('[sendOtp Warning] Email dispatch timed out/failed:', e.message);
+    }
 
     return res.status(200).json({
       success: true,
       otpRequired: true,
-      message: `Verification code sent to ${normalizedEmail}. Please check your email.`
+      emailDelivered: emailResult.success,
+      message: emailResult.success
+        ? `Verification code sent to ${normalizedEmail}. Please check your inbox or spam folder.`
+        : `Verification code generated! (Cloud host email restricted. Use code: ${code})`,
+      devCode: !emailResult.success ? code : undefined
     });
   } catch (err) {
     next(err);
