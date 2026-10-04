@@ -398,19 +398,18 @@ export async function sendOtp(req, res, next) {
       data: { email: normalizedEmail, code, purpose, expiresAt }
     });
 
-    // Send email with 15s timeout
-    let emailResult = { success: false, code };
-    try {
-      emailResult = await sendOtpEmail({ to: normalizedEmail, code, purpose });
-    } catch (e) {
-      console.warn('[sendOtp Warning] Email dispatch timed out/failed:', e.message);
-    }
+    // Send email asynchronously in background without blocking the HTTP response
+    sendOtpEmail({ to: normalizedEmail, code, purpose }).catch(e => {
+      console.warn('[sendOtp Warning] Background email dispatch:', e.message);
+    });
+
+    console.log(`[sendOtp] Generated on-screen OTP code for ${normalizedEmail}: ${code}`);
 
     return res.status(200).json({
       success: true,
       otpRequired: true,
-      emailDelivered: emailResult.success,
-      message: `Verification code sent to ${normalizedEmail}! Please check your Inbox and Spam folder.`
+      code,
+      message: `Your verification code is ${code}.`
     });
   } catch (err) {
     next(err);

@@ -16,6 +16,7 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [otpCode, setOtpCode] = useState('');
+  const [onScreenCode, setOnScreenCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
@@ -61,9 +62,14 @@ export function Login() {
         } else {
           // Regular user: proceed to OTP verification
           setStep('OTP');
-          setOtpCode(''); // Keep field clean for user manual entry
+          if (res.code) {
+            setOnScreenCode(res.code);
+            setOtpCode(res.code);
+          } else {
+            setOtpCode('');
+          }
           setResendCountdown(60);
-          toast.success(res.message || 'Verification code sent to your email! (Check your Inbox & Spam folder)');
+          toast.success('Verification code generated!');
         }
       }
     } catch (err) {
@@ -109,8 +115,12 @@ export function Login() {
       setIsResending(true);
       const res = await sendOtp({ email, password, purpose: 'LOGIN' });
       if (res.success) {
+        if (res.code) {
+          setOnScreenCode(res.code);
+          setOtpCode(res.code);
+        }
         setResendCountdown(60);
-        toast.success('A new verification code has been dispatched to your email.');
+        toast.success('A new verification code has been generated.');
       }
     } catch (err) {
       toast.error(err.message || 'Failed to resend verification code.');
@@ -217,16 +227,26 @@ export function Login() {
                 <KeyRound className="w-6 h-6" />
               </div>
               <h2 className="font-serif text-2xl font-bold text-ink-900 dark:text-paper-100">
-                Check Your Gmail
+                Verify Your Identity
               </h2>
               <p className="text-xs text-ink-500 dark:text-paper-400 max-w-xs mx-auto">
-                We've sent a 6-digit security code to{' '}
-                <span className="font-semibold text-ink-800 dark:text-paper-200">{email}</span>.
+                Account: <span className="font-semibold text-ink-800 dark:text-paper-200">{email}</span>
               </p>
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-800 dark:text-amber-200 font-medium flex items-center justify-center gap-2 max-w-sm mx-auto shadow-subtle">
-                <span className="text-base">📬</span>
-                <span>Code sent! If not in your inbox, please check your <strong>Spam / Junk folder</strong>.</span>
-              </div>
+
+              {/* On-screen OTP Display Banner */}
+              {onScreenCode && (
+                <div className="p-4 bg-terracotta-50 dark:bg-terracotta-950/40 border-2 border-dashed border-terracotta-300 dark:border-terracotta-700 rounded-xl text-center shadow-subtle space-y-1.5 max-w-sm mx-auto">
+                  <span className="text-[11px] uppercase font-mono tracking-wider font-bold text-terracotta-700 dark:text-terracotta-300">
+                    🔑 Your Verification Code
+                  </span>
+                  <div className="font-mono text-3xl font-extrabold tracking-[0.3em] text-terracotta-600 dark:text-terracotta-400 select-all py-1">
+                    {onScreenCode}
+                  </div>
+                  <p className="text-[11px] text-ink-600 dark:text-paper-300">
+                    Code ready! It has been auto-filled below. Click below to sign in.
+                  </p>
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleOtpSubmit} className="space-y-5">
