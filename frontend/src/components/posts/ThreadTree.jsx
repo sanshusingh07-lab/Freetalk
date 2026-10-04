@@ -16,7 +16,9 @@ import {
   HelpCircle, 
   Laugh, 
   Flame,
-  Send
+  Send,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { ArgumentQualityBar } from '../common/ArgumentQualityBar.jsx';
 
@@ -35,8 +37,8 @@ const REACTION_CONFIG = [
   { type: 'STRONG_POINT', icon: Flame, label: 'Strong Point' }
 ];
 
-export function CommentNode({ comment, postId, onReplyAdded, depth = 0, isChallengeOpinion = false }) {
-  const { isAuthenticated, activeIdentity } = useAuth();
+export function CommentNode({ comment, postId, onReplyAdded, onCommentDeleted, depth = 0, isChallengeOpinion = false }) {
+  const { isAuthenticated, activeIdentity, user, isStaff, isAdmin } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -48,6 +50,32 @@ export function CommentNode({ comment, postId, onReplyAdded, depth = 0, isChalle
   const [reactionCounts, setReactionCounts] = useState(comment.reactionCounts || {});
   const [userReactions, setUserReactions] = useState(comment.userReactions || []);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const canDelete = Boolean(
+    comment.canDelete || 
+    comment.isAuthor || 
+    (user && (comment.userId === user.id || isStaff || isAdmin))
+  );
+
+  const handleDeleteComment = async () => {
+    try {
+      setIsDeleting(true);
+      const res = await commentService.deleteComment(comment.id);
+      if (res.data.success) {
+        toast.success(isStaff && !comment.isAuthor ? "Comment deleted by moderator." : "Comment deleted.");
+        if (onCommentDeleted) {
+          onCommentDeleted(comment.id);
+        }
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || "Failed to delete comment.");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   const handleStartChat = () => {
     if (!isAuthenticated) {
@@ -166,6 +194,17 @@ export function CommentNode({ comment, postId, onReplyAdded, depth = 0, isChalle
               </button>
             )}
 
+            {canDelete && (
+              <button
+                onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
+                disabled={isDeleting}
+                className="p-1 text-ink-400 dark:text-paper-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors rounded hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                title={isStaff && !comment.isAuthor ? "Delete comment (Admin/Moderator)" : "Delete your comment"}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+
             <button
               onClick={() => setIsReportOpen(true)}
               className="p-1 text-ink-400 dark:text-paper-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
@@ -175,6 +214,33 @@ export function CommentNode({ comment, postId, onReplyAdded, depth = 0, isChalle
             </button>
           </div>
         </div>
+
+        {/* Delete Confirmation Prompt */}
+        {showDeleteConfirm && (
+          <div className="my-2.5 p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 flex items-center justify-between gap-2 text-xs animate-fade-in">
+            <div className="flex items-center gap-1.5 text-rose-800 dark:text-rose-200 font-medium">
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
+              <span>Delete this comment permanently?</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-2 py-0.5 rounded text-ink-600 dark:text-paper-300 hover:bg-paper-200 dark:hover:bg-ink-800 text-[11px]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteComment}
+                disabled={isDeleting}
+                className="px-2.5 py-0.5 rounded bg-rose-600 hover:bg-rose-700 text-white font-medium text-[11px] transition-colors"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         {!isCollapsed && (
@@ -279,6 +345,7 @@ export function CommentNode({ comment, postId, onReplyAdded, depth = 0, isChalle
               comment={reply}
               postId={postId}
               onReplyAdded={onReplyAdded}
+              onCommentDeleted={onCommentDeleted}
               depth={depth + 1}
               isChallengeOpinion={isChallengeOpinion}
             />
@@ -296,7 +363,7 @@ export function CommentNode({ comment, postId, onReplyAdded, depth = 0, isChalle
     </div>
   );
 }
-export function ThreadTree({ comments = [], postId, onReplyAdded, isChallengeOpinion = false }) {
+export function ThreadTree({ comments = [], postId, onReplyAdded, onCommentDeleted, isChallengeOpinion = false }) {
   if (!comments || comments.length === 0) {
     return (
       <div className="p-8 text-center rounded-xl bg-white dark:bg-charcoal-900 border border-paper-200 dark:border-ink-800 text-ink-600 dark:text-ink-300 text-sm shadow-xs">
@@ -313,6 +380,7 @@ export function ThreadTree({ comments = [], postId, onReplyAdded, isChallengeOpi
           comment={c}
           postId={postId}
           onReplyAdded={onReplyAdded}
+          onCommentDeleted={onCommentDeleted}
           depth={0}
           isChallengeOpinion={isChallengeOpinion}
         />

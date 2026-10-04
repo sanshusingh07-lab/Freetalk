@@ -79,6 +79,10 @@ export function PostDetails() {
           setPost((prev) => (prev ? { ...prev, reactionCounts: data.reactionCounts, score: data.totalScore } : prev));
         }
       });
+
+      socket.on('comment:deleted', ({ commentId }) => {
+        handleCommentDeleted(commentId);
+      });
     }
 
     return () => {
@@ -86,9 +90,24 @@ export function PostDetails() {
         socket.emit('leave:post', id);
         socket.off('comment:new');
         socket.off('post:reaction_updated');
+        socket.off('comment:deleted');
       }
     };
   }, [id, socket]);
+
+  const handleCommentDeleted = (deletedCommentId) => {
+    const removeCommentRecursive = (list) => {
+      return list
+        .filter((c) => c.id !== deletedCommentId)
+        .map((c) => ({
+          ...c,
+          replies: c.replies ? removeCommentRecursive(c.replies) : []
+        }));
+    };
+
+    setComments((prev) => removeCommentRecursive(prev));
+    setPost((prev) => (prev ? { ...prev, commentsCount: Math.max(0, (prev.commentsCount || 1) - 1) } : prev));
+  };
 
   const loadPostAndComments = async () => {
     try {
@@ -225,22 +244,6 @@ export function PostDetails() {
       {/* Main Post Card */}
       <PostCard post={post} onUpdate={loadPostAndComments} onDelete={() => navigate('/home')} />
 
-      {/* Argument Quality Endorsements for Post (Feature 13) */}
-      <div className="px-5 py-3 rounded-xl bg-surface border border-border shadow-sm">
-        <ArgumentQualityBar
-          targetType="POST"
-          targetId={post.id}
-          initialQuality={post.argumentQuality}
-        />
-      </div>
-
-      {/* Feature 12: "What Changed My Mind?" Poll */}
-      <MindChangePoll
-        targetType="POST"
-        targetId={post.id}
-        initialStats={post.mindChangeStats}
-      />
-
       {/* Feature 2: "Challenge My Opinion" Highlight & Tab Filter */}
       {post.isChallengeOpinion && (
         <div className="p-5 rounded-xl bg-paper-100 dark:bg-charcoal-800 border border-border space-y-3">
@@ -278,14 +281,14 @@ export function PostDetails() {
         </div>
       )}
 
-      {/* Threaded Discussion Section */}
-      <div className="space-y-6 pt-2">
+      {/* Threaded Discussion Section - Positioned directly below the post */}
+      <div className="space-y-5 pt-1">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <h3 className="font-serif text-lg font-bold text-ink-900 dark:text-ink-100 flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-terracotta-500" />
-            <span>Threaded Discussion</span>
+            <span>Comments & Discussion</span>
             <span className="text-xs font-mono text-ink-400 font-normal">
-              ({filteredComments.length} {filteredComments.length === 1 ? 'reply' : 'replies'})
+              ({filteredComments.length} {filteredComments.length === 1 ? 'comment' : 'comments'})
             </span>
           </h3>
 
@@ -366,7 +369,27 @@ export function PostDetails() {
           comments={filteredComments}
           postId={id}
           onReplyAdded={() => loadPostAndComments()}
+          onCommentDeleted={handleCommentDeleted}
           isChallengeOpinion={post.isChallengeOpinion}
+        />
+      </div>
+
+      {/* Discussion Insights & Polls */}
+      <div className="space-y-4 pt-4 border-t border-border">
+        {/* Argument Quality Endorsements for Post (Feature 13) */}
+        <div className="px-5 py-3 rounded-xl bg-surface border border-border shadow-sm">
+          <ArgumentQualityBar
+            targetType="POST"
+            targetId={post.id}
+            initialQuality={post.argumentQuality}
+          />
+        </div>
+
+        {/* Feature 12: "What Changed My Mind?" Poll */}
+        <MindChangePoll
+          targetType="POST"
+          targetId={post.id}
+          initialStats={post.mindChangeStats}
         />
       </div>
 

@@ -74,6 +74,7 @@ export async function getCommentsByPost(req, res, next) {
         reactionCounts,
         userReactions,
         isAuthor: req.user ? req.user.id === c.userId : false,
+        canDelete: req.user ? (req.user.id === c.userId || ['ADMIN', 'MODERATOR'].includes(req.user.role)) : false,
         identity: serializePublicIdentity(c.identity),
         challengeType: c.challengeType || null,
         argumentQuality: {
@@ -247,6 +248,7 @@ export async function createComment(req, res, next) {
       reactionCounts: { AGREE: 0, INSIGHTFUL: 0, THOUGHT_PROVOKING: 0, FUNNY: 0, STRONG_POINT: 0 },
       userReactions: [],
       isAuthor: true,
+      canDelete: true,
       identity: serializePublicIdentity(comment.identity),
       replies: []
     };
@@ -290,9 +292,12 @@ export async function deleteComment(req, res, next) {
 
     await prisma.comment.delete({ where: { id } });
 
+    // Emit live deletion event to post room
+    emitToPost(comment.postId, 'comment:deleted', { commentId: id, postId: comment.postId });
+
     return res.status(200).json({
       success: true,
-      message: "Comment removed."
+      message: "Comment removed successfully."
     });
   } catch (err) {
     next(err);
