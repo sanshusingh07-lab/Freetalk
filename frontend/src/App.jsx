@@ -12,6 +12,8 @@ import { MainAppLayout } from './layouts/MainAppLayout.jsx';
 // Public Pages
 import { Landing } from './pages/Landing.jsx';
 import { About } from './pages/About.jsx';
+import { Contact } from './pages/Contact.jsx';
+import { Feedback } from './pages/Feedback.jsx';
 import { CommunityGuidelines } from './pages/CommunityGuidelines.jsx';
 import { Privacy } from './pages/Privacy.jsx';
 import { Login } from './pages/Login.jsx';
@@ -93,6 +95,8 @@ export function App() {
                 <Route element={<PublicLayout />}>
                   <Route path="/" element={<AnonymousOnlyRoute><Landing /></AnonymousOnlyRoute>} />
                   <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/feedback" element={<Feedback />} />
                   <Route path="/guidelines" element={<CommunityGuidelines />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/login" element={<AnonymousOnlyRoute><Login /></AnonymousOnlyRoute>} />
@@ -118,6 +122,9 @@ export function App() {
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                   <Route path="/debates" element={<DebatesPage />} />
                   <Route path="/insights" element={<ProtectedRoute><PersonalInsights /></ProtectedRoute>} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/feedback" element={<Feedback />} />
 
                   {/* Staff & Admin Routes */}
                   <Route path="/moderation" element={<StaffRoute><ModerationQueue /></StaffRoute>} />

@@ -11,6 +11,8 @@ import {
   User, 
   ShieldCheck, 
   Settings, 
+  MessageSquarePlus, 
+  Star, 
   ShieldAlert, 
   LayoutDashboard,
   HelpCircle,
@@ -32,6 +34,9 @@ export function LeftSidebar({ className = '', onItemClick }) {
     { to: '/messages', label: 'Anonymous Chat', icon: MessageSquare },
     { to: '/activity', label: 'My Activity', icon: User },
     { to: '/privacy-center', label: 'Privacy Center', icon: ShieldCheck, badge: '94%' },
+    { to: '/feedback', label: 'Feedback', icon: Star },
+    { to: '/contact', label: 'Contact Us', icon: MessageSquarePlus },
+    { to: '/about', label: 'About Us', icon: HelpCircle },
     { to: '/settings', label: 'Settings', icon: Settings },
   ];
 

@@ -290,17 +290,31 @@ export function AIAssistantWidget() {
         </div>
       )}
 
-      {/* Floating Toggle Pill Button */}
+      {/* Floating Circular AI Assistant Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="group flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-ink-900 text-paper-50 dark:bg-paper-100 dark:text-ink-900 font-semibold text-xs shadow-lg border border-border transition-all hover:opacity-95"
+        title={isOpen ? "Close AI Assistant" : "FreeTalk AI Assistant"}
+        aria-label="Toggle FreeTalk AI Assistant"
+        className="relative group w-14 h-14 rounded-full bg-terracotta-600 hover:bg-terracotta-700 active:scale-95 text-white shadow-2xl flex items-center justify-center border-2 border-white dark:border-charcoal-700 transition-all duration-300 hover:scale-110 focus:outline-none"
       >
-        <span className="relative flex h-2.5 w-2.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-olive-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-olive-500"></span>
+        {/* Pulsing online badge on circle */}
+        <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white dark:border-charcoal-900"></span>
         </span>
-        <Sparkles className="w-3.5 h-3.5 text-terracotta-500" />
-        <span className="tracking-wide">AI Assistant</span>
+        
+        {isOpen ? (
+          <X className="w-6 h-6 transition-transform duration-200 rotate-90 group-hover:rotate-0" />
+        ) : (
+          <Sparkles className="w-6 h-6 transition-transform duration-200 group-hover:scale-110" />
+        )}
+
+        {/* Hover Tooltip when collapsed */}
+        {!isOpen && (
+          <span className="absolute right-16 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-ink-900 dark:bg-paper-100 text-white dark:text-ink-900 text-[11px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+            FreeTalk AI
+          </span>
+        )}
       </button>
     </div>
   );

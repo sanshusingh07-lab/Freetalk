@@ -1,3 +1,4 @@
+import { AIAssistantWidget } from '../components/ai/AIAssistantWidget.jsx';
 import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -30,7 +31,9 @@ export function PublicLayout() {
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-black">
             <Link to="/explore" className="hover:text-terracotta-600 transition-colors">Explore</Link>
             <Link to="/debates" className="hover:text-terracotta-600 transition-colors">Blind Debates</Link>
-            <Link to="/about" className="hover:text-terracotta-600 transition-colors">About</Link>
+            <Link to="/about" className="hover:text-terracotta-600 transition-colors">About Us</Link>
+            <Link to="/feedback" className="hover:text-terracotta-600 transition-colors">Feedback</Link>
+            <Link to="/contact" className="hover:text-terracotta-600 transition-colors">Contact Us</Link>
             <Link to="/guidelines" className="hover:text-terracotta-600 transition-colors">Guidelines</Link>
             <Link to="/privacy" className="hover:text-terracotta-600 transition-colors">Privacy</Link>
           </nav>
@@ -69,6 +72,9 @@ export function PublicLayout() {
         <Outlet />
       </main>
 
+      {/* Floating Circular AI Assistant */}
+      <AIAssistantWidget />
+
       {/* Footer */}
       <footer className="w-full border-t border-paper-200 bg-paper-100/80 py-12 text-xs text-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -83,7 +89,9 @@ export function PublicLayout() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-6 font-medium text-black">
-            <Link to="/about" className="hover:text-terracotta-600 transition-colors">About</Link>
+            <Link to="/about" className="hover:text-terracotta-600 transition-colors">About Us</Link>
+            <Link to="/feedback" className="hover:text-terracotta-600 transition-colors">Feedback</Link>
+            <Link to="/contact" className="hover:text-terracotta-600 transition-colors">Contact Us</Link>
             <Link to="/guidelines" className="hover:text-terracotta-600 transition-colors">Community Guidelines</Link>
             <Link to="/privacy" className="hover:text-terracotta-600 transition-colors">Privacy Policy</Link>
             <Link to="/explore" className="hover:text-terracotta-600 transition-colors">Explore</Link>
